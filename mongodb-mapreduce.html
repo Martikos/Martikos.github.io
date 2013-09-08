@@ -55,24 +55,27 @@
             And what I would need to do is classify the dailies into several ranges: 'today', 'yesterday', 'last month' and 'last year',
             so that I can compute overall stats for that account, in these 4 ranges. Eventually I would like to end up with 4 objects, 
             one for each timespan, each object having the total number of impressions and clicks for that timespan.
+            <br>
 
-            You would suggest I use MongoDB's aggregation framework to do this. But, even if MongoDB lets me easily unwind the dailies from 
-            the list using the '$unwind' function, I got stuck when trying to group the dailies, by date, into the different timespan classes,
+            You would suggest I use MongoDB's aggregation framework to do this. It was intuitive for me 
+            to think of the aggregation frameworkm, since '$unwind' helps me out alot, 
+            But I got stuck when trying to group the dailies, by date, into the different timespan classes,
             since I'm not allowed to use '$cond' in the '$group' phase of the aggregation pipeline.
 
-            So! I thought that would be the awesome chance to try out MongoDB's map reduce framework, which gives me more flexibility.
+            So! I thought that would be an awesome chance to try out MongoDB's map reduce framework, which gives me more flexibility.
         </p>
 
         <h3><a name="map-reduce" class="anchor" href="#setup"><span class="octicon octicon-link"></span></a>Map/Reduce</h3>
         <p>
             The MongoDB Map/Reduce 'pipeline' is made up of 4 phases:
-            <h4>Query</h4>
+            <br><br><strong>Query</strong>
             This is exactly what it is.
-            <h4>Map</h4>
+            <br><br><strong>Map</strong>
             This is the function that would use to map objects into different classes. This is a simple function that is applied 
             to every document queried (matching the query condition), and it emits key-value pairs. The key would be that of the class 
             you're mapping that object to, the value would be the object you're storing in that class. For me, the mapping function 
             would look like so (all campaigns queried):
+        </p>
 <pre><code>
 function() {
     for(daily in dailies) {
@@ -90,13 +93,14 @@ function() {
         }
     }
 </code></pre>
+        <p>
             And this would map dailies to their right timespans. Now the result is key-value pair, where the key is the set you've mapped 
             your document to (which, in my case, is one of the 4 timespans), and the value is the list of documents emitted to that key.
-            <h4>Reduce</h4>
+            <br><br><strong>Reduce</strong>
             This function is run over each set/class/key you've mapped your documents to. This is where you would do processing on all 
             of the objects inside each specific class. My reduce function looks like so:
-<pre><code>
-function(key, values) {
+        </p>
+<pre><code>function(key, values) {
     var impressions = clicks = 0;
     values.forEach(function(value) {
         impressions += value.impressions;
@@ -108,6 +112,7 @@ function(key, values) {
     }
 }
 </code></pre>
+        <p>
             This would reduce all of your documents in each class into this returned variable which is returned in the reduced function.
         </p>
 
@@ -117,10 +122,11 @@ function(key, values) {
             I had to write these JavaScript functions in python land, which felt a bit weird to be honest.
             These were strings, converted to Code objects, that of python's bson.code, so that they can be passed in 
             to MongoEngine's map_reduce function. And so, I would call the function this way:
-<pre><code>
-results = Campaign._get_collection().map_reduce(map, reduce, {'inline': 1}, query=query)
-</code></pre>
-            
+        </p>
+<pre><code>results = Campaign._get_collection().map_reduce(map, reduce, {'inline': 1}, query=query)</code></pre>
+
+
+        <p>
             what I would also do is write my own python function to solve that same problem, using nested for loops and if statements 
             with date comparisons, maitaining stats for each timespan as I loop through all campaigns and their dailies.
             The point is I had two solutions:
@@ -138,20 +144,18 @@ results = Campaign._get_collection().map_reduce(map, reduce, {'inline': 1}, quer
             map reduce function. I wrote a small script to call these 2 functions and average out the running times for each function, 
             for several different campaigns, and several different dailies, here are my benchmarks:
             MongoDB performed horribly
-<pre><code>
-    Different number of campaigns, 60 days of data
-    10 campaigns: 0.059 seconds (vs 0.013 seconds in Python)
-    200 campaigns: 1.775 seconds (vs 0.076 seconds in Python)
-    500 campaigns: 2.013 seconds (vs 0.098 seconds in Python)
-    2000 campaigns: 7.132 seconds (vs 0.243 seconds in Python)
+<pre><code>Different number of campaigns, 60 days of data
+10 campaigns: 0.059 seconds (vs 0.013 seconds in Python)
+200 campaigns: 1.775 seconds (vs 0.076 seconds in Python)
+500 campaigns: 2.013 seconds (vs 0.098 seconds in Python)
+2000 campaigns: 7.132 seconds (vs 0.243 seconds in Python)
 
-    10 campaigns, different number of data points:
-    10 dailies: 0.007 seconds (vs 0.003)
-    100 dailies: 0.070 seconds (vs 0.018)
-    500 dailies: 0.256 seconds (vs 0.085)
-    5000 dailies: 2.231 seconds (vs 0.886)
-    50000 dailies: BSONObj size is invalid (>16MB) (vs 7.357)
-</code></pre>
+10 campaigns, different number of data points:
+10 dailies: 0.007 seconds (vs 0.003)
+100 dailies: 0.070 seconds (vs 0.018)
+500 dailies: 0.256 seconds (vs 0.085)
+5000 dailies: 2.231 seconds (vs 0.886)
+50000 dailies: BSONObj size is invalid (>16MB) (vs 7.357)</code></pre>
             Things look pretty dismal. MongoDB performed horribly. I guess that kindof makes sense, if the map/reduce is using the embedded JavaScript engine.
 
         </p>
