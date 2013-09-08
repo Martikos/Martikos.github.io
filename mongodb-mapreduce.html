@@ -123,7 +123,10 @@ function() {
             These were strings, converted to Code objects, that of python's bson.code, so that they can be passed in 
             to MongoEngine's map_reduce function. And so, I would call the function this way:
         </p>
-<pre><code>results = Campaign._get_collection().map_reduce(map, reduce, {'inline': 1}, query=query)</code></pre>
+<pre><code>results = Campaign._get_collection().map_reduce(map, 
+  reduce, 
+  {'inline': 1}, 
+  query=query)</code></pre>
 
 
         <p>
