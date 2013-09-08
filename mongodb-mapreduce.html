@@ -51,7 +51,7 @@
       clicks: 731
     }
   ]
-</code></pre>}
+}</code></pre>
             And what I would need to do is classify the dailies into several ranges: 'today', 'yesterday', 'last month' and 'last year',
             so that I can compute overall stats for that account, in these 4 ranges. Eventually I would like to end up with 4 objects, 
             one for each timespan, each object having the total number of impressions and clicks for that timespan.
@@ -60,7 +60,7 @@
             the list using the '$unwind' function, I got stuck when trying to group the dailies, by date, into the different timespan classes,
             since I'm not allowed to use '$cond' in the '$group' phase of the aggregation pipeline.
 
-            So! I thought that would be the awesome change to try out MongoDB's map reduce framework, which gives me more flexibility.
+            So! I thought that would be the awesome chance to try out MongoDB's map reduce framework, which gives me more flexibility.
         </p>
 
         <h3><a name="map-reduce" class="anchor" href="#setup"><span class="octicon octicon-link"></span></a>Map/Reduce</h3>
@@ -152,7 +152,7 @@ results = Campaign._get_collection().map_reduce(map, reduce, {'inline': 1}, quer
     5000 dailies: 2.231 seconds (vs 0.886)
     50000 dailies: BSONObj size is invalid (>16MB) (vs 7.357)
 </code></pre>
-            MongoDB performed horribly. I guess that kindof makes sense, if the map/reduce is using the embedded JavaScript engine.
+            Things look pretty dismal. MongoDB performed horribly. I guess that kindof makes sense, if the map/reduce is using the embedded JavaScript engine.
 
         </p>
 
