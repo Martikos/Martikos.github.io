@@ -24,7 +24,6 @@
 
       </header>
       <section>
-        <h3<<a name="hey" class="anchor" href="#hey"><span class="octicon octicon-link"></span></a>Hey!</h3>
         <h3><a name="quick-intro" class="anchor" href="#quick-intro"><span class="octicon octicon-link"></span></a>Quick Intro</h3>
         <p>
             I've been messing around with MongoDB recently, I can say that I really liked MongoDB's aggregation framework, 
@@ -38,8 +37,7 @@
             In my daily work I deal with marketing accounts. Each account has several campaigns 
             and campaigns would have daily stats, for the days those campaign is running. 
             So you can imagine my MongoDB campaign document looking (roughly) like so:
-<pre><code>
-{
+<pre><code>{
   name: 'Awesomely Optimized Campaign',
   dailies: [
     {
@@ -53,7 +51,7 @@
       clicks: 731
     }
   ]
-</code></pre>
+</code></pre>}
             And what I would need to do is classify the dailies into several ranges: 'today', 'yesterday', 'last month' and 'last year',
             so that I can compute overall stats for that account, in these 4 ranges. Eventually I would like to end up with 4 objects, 
             one for each timespan, each object having the total number of impressions and clicks for that timespan.
