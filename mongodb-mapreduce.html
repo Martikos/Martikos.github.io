@@ -15,7 +15,7 @@
   <body>
     <div class="wrapper">
       <header>
-        <h1>MongoDB Map/Reduce</h1>
+        <h1>MongoDB Map/Reduce Performance</h1>
         <p></p>
 
 
@@ -28,15 +28,15 @@
         <p>
             I've been messing around with MongoDB recently, I can say that I really liked MongoDB's aggregation framework, 
             it's just good at doing stuff. So this post is about MongoDB's map/reduce framework, I thought I'd try it out.
-            Although the guys at MongoDB say it's pretty inefficient, and that it uses the embedded JavaScript engine, 
+            Although people say it's pretty inefficient, and that it uses its embedded JavaScript engine, 
             I thought I'd try it out and prove it myself. So here goes!
         </p>
 
         <h3><a name="setup" class="anchor" href="#setup"><span class="octicon octicon-link"></span></a>Setup</h3>
         <p>
-            In my daily work I deal with marketing accounts. Each account has several campaigns 
-            and campaigns would have daily stats, for the days those campaign is running. 
-            So you can imagine my MongoDB campaign document looking (roughly) like so:
+            In my daily work I deal with advertising and marketing accounts. Each account has several advertising campaigns,
+            and campaigns would have daily stats, for the days those campaigns are running. Each day, each campaign makes 
+            a certain number of impressions and clicks. And so you can imagine my MongoDB campaign document looking (roughly) like so:
 <pre><code>{
   name: 'Awesomely Optimized Campaign',
   dailies: [
@@ -52,33 +52,33 @@
     }
   ]
 }</code></pre>
-            And what I would need to do is classify the dailies into several ranges: 'today', 'yesterday', 'last month' and 'last year',
-            so that I can compute overall stats for that account, in these 4 ranges. Eventually I would like to end up with 4 objects, 
-            one for each timespan, each object having the total number of impressions and clicks for that timespan.
-            <br>
+            And what I would need to do is classify the items in those dailies lists into several ranges: 'today', 'yesterday', 
+            'last month' and 'last year', so that I can compute overall stats for that account, in these 4 ranges. 
+            Eventually I would like to end up with 4 objects, one for each timespan, each object having the total number of 
+            impressions and clicks for that timespan.
+            <br><br>
 
+            I do things in python, and I'm using the MongoEngine Document-Object Mapper to help me out with things.
             You would suggest I use MongoDB's aggregation framework to do this. It was intuitive for me 
-            to think of the aggregation frameworkm, since '$unwind' helps me out alot, 
-            But I got stuck when trying to group the dailies, by date, into the different timespan classes,
+            to think of the aggregation framework, since '$unwind' helps me out with extracting the dailies, 
+            but I got stuck when trying to group the dailies, by date, into the different timespan classes,
             since I'm not allowed to use '$cond' in the '$group' phase of the aggregation pipeline.
 
-            So! I thought that would be an awesome chance to try out MongoDB's map reduce framework, which gives me more flexibility.
+            So! I thought it was the awesome chance to try out MongoDB's Map/Reduce framework which gives me some more flexibility.
         </p>
 
         <h3><a name="map-reduce" class="anchor" href="#setup"><span class="octicon octicon-link"></span></a>Map/Reduce</h3>
         <p>
-            The MongoDB Map/Reduce 'pipeline' is made up of 4 phases:
-            <br><br><strong>Query</strong>
-            This is exactly what it is.
-            <br><br><strong>Map</strong>
-            This is the function that would use to map objects into different classes. This is a simple function that is applied 
+            The MongoDB Map/Reduce 'pipeline' is made up of 3 phases. I'll just briefly explain what each phase is. 
+            <br><br><strong>Query:</strong> Which means exactly what it means.
+            <br><br><strong>Map: </strong>
+            This is the function that would use to map objects into different classes. It is a simple function that is applied 
             to every document queried (matching the query condition), and it emits key-value pairs. The key would be that of the class 
             you're mapping that object to, the value would be the object you're storing in that class. For me, the mapping function 
-            would look like so (all campaigns queried):
+            would look like so (after querying all campaign documents):
         </p>
-<pre><code>
-function() {
-    for(daily in dailies) {
+<pre><code>function() {
+    for(daily in this.dailies) {
         if(daily.date == today) {
             emit('today', daily);
         }
@@ -91,12 +91,13 @@ function() {
         if(daily.date >= lastyear) {
             emit('lastYear', daily);
         }
-    }
-</code></pre>
+    }</code></pre>
         <p>
-            And this would map dailies to their right timespans. Now the result is key-value pair, where the key is the set you've mapped 
-            your document to (which, in my case, is one of the 4 timespans), and the value is the list of documents emitted to that key.
-            <br><br><strong>Reduce</strong>
+            And this would map dailies to their right timespans. Now the result is a key-value pair, where the key is the name/id of the
+            set you've mapped your document to (which, in my case, is one of the 4 timespans), and the value is the list of documents 
+            emitted to that key.
+
+            <br><br><strong>Reduce:</strong>
             This function is run over each set/class/key you've mapped your documents to. This is where you would do processing on all 
             of the objects inside each specific class. My reduce function looks like so:
         </p>
@@ -113,36 +114,37 @@ function() {
 }
 </code></pre>
         <p>
-            This would reduce all of your documents in each class into this returned variable which is returned in the reduced function.
+            This would reduce all of your documents in each class into this one returned variable, which is returned in this function.
         </p>
 
         <h3><a name="problem" class="anchor" href="#setup"><span class="octicon octicon-link"></span></a>Sovling the Problem</h3>
         <p>
             What's left is to pass all of these functions to the map_reduce function in MongoEngine.
             I had to write these JavaScript functions in python land, which felt a bit weird to be honest.
-            These were strings, converted to Code objects, that of python's bson.code, so that they can be passed in 
-            to MongoEngine's map_reduce function. And so, I would call the function this way:
+            Those had to be strings which were converted to Code object (from the python bson.code module).
+            And so, I would call the function in the following way:
         </p>
 <pre><code>results = Campaign._get_collection().map_reduce(map, reduce, {'inline': 1}, query=query)</code></pre>
 
 
         <p>
-            what I would also do is write my own python function to solve that same problem, using nested for loops and if statements 
+            Then what I would also do is write my own python function to solve that same problem, using nested for loops and if statements 
             with date comparisons, maitaining stats for each timespan as I loop through all campaigns and their dailies.
-            The point is I had two solutions:
+            So I have those two solutions:
             <ul>
                 <li> Write JavaScript code in python to use MongoDB Map/Reduce </li>
                 <li> Write simple python code <3 </li>
             </ul>
-            But it wasn't worth it!
+            And the idea was to determine which solution would run faster.
+            Because stuff that run faster are more awesome! So here's how I did it.
         </p>
 
         <h3><a name="benchmarks" class="anchor" href="#benchmarks"><span class="octicon octicon-link"></span></a>Benchmarks</h3>
         <p>
             I used the profilehooks module in python to do profiling, and profilehooks has this fantastic timecall decorator function,
             which I used to wrap around each of the two function implementations, one for the python function, and one for the MongoDB 
-            map reduce function. I wrote a small script to call these 2 functions and average out the running times for each function, 
-            for several different campaigns, and several different dailies, here are my benchmarks:
+            map reduce function. I wrote a small script to call these 2 functions on datasets with different sizes and average out the 
+            running times for each function, for several different campaigns, and several different dailies, here are my benchmarks:
         <p>
 <pre><code>Different number of campaigns, 60 days of data
 10 campaigns: 0.059 seconds (vs 0.013 seconds in Python)
@@ -158,7 +160,13 @@ function() {
 50000 dailies: BSONObj size is invalid (>16MB) (vs 7.357)</code></pre>
         </p>
         <p>
-            Things look pretty dismal. MongoDB performed horribly. I guess that kindof makes sense, if the map/reduce is using the embedded JavaScript engine.
+            Things look pretty dismal, MongoDB performed horribly, python beats MongoDB's map/reduce in every single scenario,
+            every day of the week (get it? because I have stats everyday.. no? ok sorry).
+            
+            I had to write relatively more code to do the MongoDB map/reduce, not to mention it was JavaScript code in a python module, 
+            which can't be easily debugged. I guess I still haven't figured out the point of Map/Reduce,
+            why use it if it runs so slowly? Why not just have a Python RQ worker take care of the task for me.
+            Is it efficient in memory? Maybe I need more data points? Any comments would be great, otherwise I shall strive to find out!
         </p>
 
       </section>
