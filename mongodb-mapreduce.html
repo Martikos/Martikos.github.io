@@ -146,7 +146,7 @@ function() {
             which I used to wrap around each of the two function implementations, one for the python function, and one for the MongoDB 
             map reduce function. I wrote a small script to call these 2 functions and average out the running times for each function, 
             for several different campaigns, and several different dailies, here are my benchmarks:
-            MongoDB performed horribly
+        <p>
 <pre><code>Different number of campaigns, 60 days of data
 10 campaigns: 0.059 seconds (vs 0.013 seconds in Python)
 200 campaigns: 1.775 seconds (vs 0.076 seconds in Python)
@@ -159,8 +159,9 @@ function() {
 500 dailies: 0.256 seconds (vs 0.085)
 5000 dailies: 2.231 seconds (vs 0.886)
 50000 dailies: BSONObj size is invalid (>16MB) (vs 7.357)</code></pre>
+        </p>
+        <p>
             Things look pretty dismal. MongoDB performed horribly. I guess that kindof makes sense, if the map/reduce is using the embedded JavaScript engine.
-
         </p>
 
       </section>
